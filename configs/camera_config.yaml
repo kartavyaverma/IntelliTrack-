@@ -1,0 +1,5 @@
+cameras:
+  - camera_id: cam_1
+    source: data/videos/mot17_04.mp4
+  - camera_id: cam_2
+    source: data/videos/mot17_09.mp4

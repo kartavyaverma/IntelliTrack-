@@ -1,0 +1,5 @@
+cameras:
+  - camera_id: cam_1
+    source: data/videos/mot17_04_split_a.mp4
+  - camera_id: cam_2
+    source: data/videos/mot17_04_split_b.mp4

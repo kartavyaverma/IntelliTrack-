@@ -1,0 +1,22 @@
+device: auto
+
+detection:
+  model_name: yolov8n.pt
+  confidence_threshold: 0.4
+  target_class: person
+
+tracking:
+  max_age: 30
+  n_init: 3
+
+reid:
+  model_name: osnet_x0_25
+  match_distance_threshold: 0.35
+
+face_match:
+  min_face_size_px: 40
+  match_distance_threshold: 0.5
+  consecutive_matches_required: 3
+
+alerts:
+  cooldown_seconds: 15

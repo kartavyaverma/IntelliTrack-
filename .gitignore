@@ -1,0 +1,58 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+env/
+*.egg-info/
+build/
+dist/
+
+# Environment / secrets
+.env
+
+# Data — raw/generated, not meant to be pushed
+data/videos/*
+!data/videos/.gitkeep
+data/missing_persons/*
+!data/missing_persons/.gitkeep
+data/embeddings_index/*
+!data/embeddings_index/.gitkeep
+data/outputs/*
+!data/outputs/.gitkeep
+data/raw_mot17/
+data/*.db
+data/intellitrack.db
+
+# Model weights — large, downloadable per README instructions
+models/*.pth
+models/*.pt
+yolov8n.pt
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+npm-debug.log*
+yarn-error.log*
+
+# Notebooks
+*.ipynb_checkpoints
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+
+# Internal dev docs and one-off debug/test scripts — not meant for the public repo
+CONTEXT.md
+IMPLEMENTATION_PLAN.md
+VIVA_PREP.md
+benchmark_pipeline.py
+crop_reference_from_video.py
+debug_crop.py
+find_best_face.py
+test_corrupt_video.py
+test_insightface.py
+test_reference_photo.py
+phase5_log.txt
+*.log

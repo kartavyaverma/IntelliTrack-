@@ -1,0 +1,25 @@
+torch
+torchvision
+opencv-python
+pyyaml
+numpy
+sqlalchemy>=2.0
+fastapi
+uvicorn[standard]
+
+# Detection + tracking (Phase 1)
+ultralytics
+deep-sort-realtime
+
+# Cross-camera Re-ID (Phase 3)
+torchreid
+faiss-cpu
+gdown
+tensorboard
+
+# Face recognition (Phase 4)
+insightface
+onnxruntime
+
+# API file uploads (Phase 7)
+python-multipart

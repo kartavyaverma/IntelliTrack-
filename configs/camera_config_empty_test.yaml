@@ -1,0 +1,3 @@
+cameras:
+  - camera_id: cam_empty
+    source: data/videos/empty_test.mp4
