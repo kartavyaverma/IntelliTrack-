@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { API_BASE, getJSON, API_HINT } from '../api'
+import { Status } from '../ui'
 
 function HeatmapsPage() {
     const [heatmaps, setHeatmaps] = useState([])
@@ -13,36 +14,37 @@ function HeatmapsPage() {
             .finally(() => setLoading(false))
     }, [])
 
-    if (loading) return <div className="status">Loading heatmaps...</div>
-    if (error) {
-        return (
-            <div className="status error">
-                <p>Failed to load heatmaps: {error}</p>
-                <p>{API_HINT}</p>
-            </div>
-        )
-    }
+    if (loading) return <Status title="Loading heatmaps…" />
+    if (error) return <Status kind="error" title={`Failed to load heatmaps: ${error}`}>{API_HINT}</Status>
 
     if (heatmaps.length === 0) {
         return (
-            <div className="status">
-                No heatmaps found yet — run <code>python -m scripts.run_phase6_pipeline</code> to
-                generate some.
-            </div>
+            <Status title="No heatmaps yet">
+                Run <code>python -m scripts.run_phase6_pipeline</code> to generate some.
+            </Status>
         )
     }
 
     return (
         <div className="heatmap-grid">
-            {heatmaps.map((hm) => (
-                <div className="card heatmap-card" key={hm.filename}>
-                    <h3>{hm.filename.replace('_heatmap.jpg', '').replace('phase6_', '')}</h3>
-                    {hm.updated_at && (
-                        <p className="meta">Generated {new Date(hm.updated_at).toLocaleString()}</p>
-                    )}
-                    <img src={`${API_BASE}${hm.url}`} alt={`Heatmap for ${hm.filename}`} />
-                </div>
-            ))}
+            {heatmaps.map((hm) => {
+                const camera = hm.filename.replace('_heatmap.jpg', '').replace('phase6_', '')
+                return (
+                    <div className="panel heatmap-card" key={hm.filename}>
+                        <figure>
+                            <img src={`${API_BASE}${hm.url}`} alt={`Heatmap for ${camera}`} />
+                        </figure>
+                        <div className="card-foot">
+                            <span className="camera-tag">{camera}</span>
+                            {hm.updated_at && (
+                                <span className="card-meta mono">
+                                    {new Date(hm.updated_at).toLocaleString()}
+                                </span>
+                            )}
+                        </div>
+                    </div>
+                )
+            })}
         </div>
     )
 }

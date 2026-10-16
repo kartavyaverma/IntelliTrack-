@@ -61,7 +61,7 @@ def main(display: bool):
             annotated = draw_tracks(frame.image, tracks)
 
             if camera_id not in writers:
-                writers[camera_id] = build_writer(camera_id, annotated.shape)
+                writers[camera_id] = build_writer(camera_id, annotated.shape, fps=reader.fps)
             writer, out_path = writers[camera_id]
             writer.write(annotated)
 

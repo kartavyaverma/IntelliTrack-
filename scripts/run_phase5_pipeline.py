@@ -1,4 +1,3 @@
-print("SCRIPT STARTED", flush=True)
 
 """
 Phase 5 — Merged pipeline: multi-camera ingestion + detection + tracking +
@@ -17,10 +16,8 @@ warnings.filterwarnings("ignore", category=UserWarning, module="torchreid")
 
 import argparse
 import os
-print("BASIC IMPORTS DONE", flush=True)
 
 import cv2
-print("CV2 IMPORTED", flush=True)
 
 from src.common.config import load_yaml_config
 from src.common.device import get_device
@@ -28,22 +25,18 @@ from src.detection.detector import PersonDetector
 from src.tracking.tracker import PersonTracker
 from src.tracking.annotator import draw_tracks
 from src.ingestion.multi_source import MultiSourceManager
-print("STAGE 1-4 IMPORTS DONE", flush=True)
 
 from src.reid.embedder import PersonEmbedder
 from src.reid.matcher import CrossCameraMatcher
-print("REID IMPORTS DONE", flush=True)
 
 from src.face_match.embedder import FaceEmbedder
 from src.face_match.matcher import FaceMatcher
-print("FACE MATCH IMPORTS DONE", flush=True)
 
 from src.db.session import SessionLocal, init_db
 from src.db.crud import (
     get_or_create_camera, get_or_create_person,
     log_face_sighting, log_reid_sighting,
 )
-print("DB IMPORTS DONE", flush=True)
 
 OUTPUT_DIR = "data/outputs"
 REID_MATCH_THRESHOLD = 0.85
@@ -132,7 +125,6 @@ def main(display: bool, config_path: str):
 
     active_cameras = set(manager.readers.keys())
     print(f"ACTIVE CAMERAS: {active_cameras}", flush=True)
-    print("ENTERING MAIN LOOP", flush=True)
 
     while active_cameras:
         finished_this_round = []
@@ -211,7 +203,7 @@ def main(display: bool, config_path: str):
                     reid_matcher.add(reid_vec, camera_id, track.track_id, frame.frame_id, frame.timestamp)
                     reid_indexed_tracks.add(track_key)
             if camera_id not in writers:
-                writers[camera_id] = build_writer(camera_id, annotated.shape)
+                writers[camera_id] = build_writer(camera_id, annotated.shape, fps=reader.fps)
             writer, out_path = writers[camera_id]
             writer.write(annotated)
 
@@ -226,7 +218,6 @@ def main(display: bool, config_path: str):
         for cid in finished_this_round:
             active_cameras.discard(cid)
 
-    print("MAIN LOOP FINISHED", flush=True)
 
     for camera_id, (writer, out_path) in writers.items():
         writer.release()

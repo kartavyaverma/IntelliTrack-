@@ -1,25 +1,27 @@
-torch
-torchvision
-opencv-python
-pyyaml
-numpy
-sqlalchemy>=2.0
-fastapi
-uvicorn[standard]
+# Versions pinned to the environment the project was validated with
+# (Python 3.13, CPU). Loosen deliberately if you need to upgrade.
+torch==2.12.1
+torchvision==0.27.1
+opencv-python==5.0.0.93
+pyyaml==6.0.3
+numpy==2.5.1
+sqlalchemy==2.0.51
+fastapi==0.141.1
+uvicorn[standard]==0.52.1
 
 # Detection + tracking (Phase 1)
-ultralytics
-deep-sort-realtime
+ultralytics==8.4.89
+deep-sort-realtime==1.3.2
 
 # Cross-camera Re-ID (Phase 3)
-torchreid
-faiss-cpu
-gdown
-tensorboard
+torchreid==0.2.5
+faiss-cpu==1.15.0
+gdown==6.1.0
+tensorboard==2.21.0
 
 # Face recognition (Phase 4)
-insightface
-onnxruntime
+insightface==1.0.1
+onnxruntime==1.28.0
 
 # API file uploads (Phase 7)
-python-multipart
+python-multipart==0.0.32

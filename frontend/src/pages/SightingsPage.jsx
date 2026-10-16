@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { getJSON, API_HINT } from '../api'
+import { Toolbar, TypeBadge, Similarity, Status } from '../ui'
 
 const POLL_INTERVAL_MS = 5000
 
@@ -48,8 +49,8 @@ function SightingsPage() {
 
     return (
         <div>
-            <div className="toolbar">
-                <label>
+            <Toolbar lastUpdated={lastUpdated} onRefresh={fetchSightings}>
+                <label className="field">
                     Type
                     <select value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)}>
                         <option value="">All</option>
@@ -58,7 +59,7 @@ function SightingsPage() {
                     </select>
                 </label>
 
-                <label>
+                <label className="field">
                     Camera
                     <select value={cameraFilter} onChange={(e) => setCameraFilter(e.target.value)}>
                         <option value="">All</option>
@@ -68,32 +69,24 @@ function SightingsPage() {
                     </select>
                 </label>
 
-                <span className="count">{sightings.length} sighting(s)</span>
-                <span className="spacer" />
-                {lastUpdated && (
-                    <span className="last-updated">Updated {lastUpdated.toLocaleTimeString()}</span>
-                )}
-                <button className="btn" onClick={fetchSightings}>Refresh</button>
-            </div>
+                <span className="count"><strong>{sightings.length}</strong> sighting(s)</span>
+            </Toolbar>
 
-            {loading && <div className="status">Loading sightings...</div>}
+            {loading && <Status title="Loading sightings…" />}
             {error && (
-                <div className="status error">
-                    <p>Failed to load sightings: {error}</p>
-                    <p>{API_HINT}</p>
-                </div>
+                <Status kind="error" title={`Failed to load sightings: ${error}`}>{API_HINT}</Status>
             )}
 
             {!loading && !error && sightings.length === 0 && (
-                <p className="status">No sightings match this filter.</p>
+                <Status title="No sightings match this filter" />
             )}
 
             {!loading && !error && sightings.length > 0 && (
-                <div className="table-wrap">
+                <div className="panel table-wrap">
                     <table className="data-table">
                         <thead>
                             <tr>
-                                <th className="num">ID</th>
+                                <th className="num">#</th>
                                 <th>Type</th>
                                 <th>Camera</th>
                                 <th className="num">Track</th>
@@ -105,15 +98,15 @@ function SightingsPage() {
                         <tbody>
                             {sightings.map((s) => (
                                 <tr key={s.id}>
-                                    <td className="num">{s.id}</td>
-                                    <td><span className={`badge badge-${s.type}`}>{s.type}</span></td>
-                                    <td>{s.camera_id}</td>
+                                    <td className="num id">{s.id}</td>
+                                    <td><TypeBadge type={s.type} /></td>
+                                    <td className="mono strong">{s.camera_id}</td>
                                     <td className="num">{s.track_id >= 0 ? s.track_id : '—'}</td>
                                     <td className="num">
                                         {s.timestamp_sec != null ? `${s.timestamp_sec.toFixed(2)}s` : '—'}
                                     </td>
-                                    <td className="num">{s.similarity != null ? s.similarity.toFixed(3) : '—'}</td>
-                                    <td>{describeMatch(s)}</td>
+                                    <td className="num"><Similarity value={s.similarity} type={s.type} /></td>
+                                    <td className="strong">{describeMatch(s)}</td>
                                 </tr>
                             ))}
                         </tbody>

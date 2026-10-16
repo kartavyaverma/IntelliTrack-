@@ -259,7 +259,7 @@ def main(display: bool, config_path: str, show_heatmap: bool):
                     reid_indexed_tracks.add(track_key)
 
                 if camera_id not in writers:
-                    writers[camera_id] = build_writer(camera_id, annotated.shape)
+                    writers[camera_id] = build_writer(camera_id, annotated.shape, fps=reader.fps)
                 writer, _ = writers[camera_id]
                 writer.write(annotated)
 

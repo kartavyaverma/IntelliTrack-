@@ -107,7 +107,7 @@ def main(display: bool, config_path: str):
                 cv2.rectangle(annotated, (x1, y1), (x2, y2), (0, 0, 255), 2)
 
             if camera_id not in writers:
-                writers[camera_id] = build_writer(camera_id, annotated.shape)
+                writers[camera_id] = build_writer(camera_id, annotated.shape, fps=reader.fps)
             writer, out_path = writers[camera_id]
             writer.write(annotated)
 

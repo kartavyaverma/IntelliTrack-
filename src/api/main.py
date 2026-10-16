@@ -168,7 +168,8 @@ def _safe_filename(name: str, original_filename: str) -> str:
 async def register_person(name: str = Form(...), file: UploadFile = File(...)):
     """
     Registers a new missing-person reference photo. Validates a usable face
-    is actually detectable BEFORE saving anything or writing to the DB —
+    is actually detectable BEFORE writing to the DB (a rejected photo is
+    deleted again) —
     same validation this project's pipeline scripts already require at
     startup (see Phase 4's find_best_face.py debugging story), just applied
     here at upload time instead of at script-startup time.
@@ -178,9 +179,14 @@ async def register_person(name: str = Form(...), file: UploadFile = File(...)):
     person at startup, so a person added here is matched on the NEXT run —
     an already-running pipeline does not pick them up live.
     """
+    name = name.strip()
+    if not name:
+        raise HTTPException(status_code=400, detail="Name must not be empty.")
+
     session = SessionLocal()
+    save_path = None
     try:
-        existing = session.query(Person).filter_by(name=name.strip()).first()
+        existing = session.query(Person).filter_by(name=name).first()
         if existing is not None:
             raise HTTPException(
                 status_code=409,
@@ -200,12 +206,10 @@ async def register_person(name: str = Form(...), file: UploadFile = File(...)):
         import cv2
         img = cv2.imread(save_path)
         if img is None:
-            os.remove(save_path)
             raise HTTPException(status_code=400, detail="Could not read uploaded image file.")
 
         faces = _face_embedder.detect_and_embed(img)
         if not faces:
-            os.remove(save_path)
             raise HTTPException(
                 status_code=422,
                 detail=(
@@ -214,7 +218,8 @@ async def register_person(name: str = Form(...), file: UploadFile = File(...)):
                 )
             )
 
-        person = get_or_create_person(session, name.strip(), save_path)
+        person = get_or_create_person(session, name, save_path)
+        save_path = None  # saved and registered — keep the file
         return {
             "id": person.id,
             "name": person.name,
@@ -223,4 +228,8 @@ async def register_person(name: str = Form(...), file: UploadFile = File(...)):
             "det_score": faces[0]["det_score"],
         }
     finally:
+        # Any failure after the file was written (rejected photo, detector
+        # error, DB error) must not leave an orphan photo on disk.
+        if save_path is not None and os.path.exists(save_path):
+            os.remove(save_path)
         session.close()

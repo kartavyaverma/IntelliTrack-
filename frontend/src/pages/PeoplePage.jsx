@@ -1,17 +1,21 @@
 import { useState, useEffect, useCallback } from 'react'
 import { API_BASE, getJSON, API_HINT } from '../api'
+import { Icon, Status } from '../ui'
 
 function PersonCard({ person }) {
     const [broken, setBroken] = useState(false)
     return (
-        <div className="person-card">
+        <figure className="panel person-card">
             {broken ? (
                 <div className="photo-missing">Photo file missing</div>
             ) : (
                 <img src={`${API_BASE}${person.photo_url}`} alt={person.name} onError={() => setBroken(true)} />
             )}
-            <p>{person.name}</p>
-        </div>
+            <figcaption>
+                {person.name}
+                <span className="mono">ID {person.id}</span>
+            </figcaption>
+        </figure>
     )
 }
 
@@ -65,7 +69,8 @@ function PeoplePage() {
             const data = await res.json().catch(() => ({}))
 
             if (!res.ok) {
-                throw new Error(data.detail || `Upload failed (${res.status})`)
+                const detail = typeof data.detail === 'string' ? data.detail : null
+                throw new Error(detail || `Upload failed (${res.status})`)
             }
 
             setUploadSuccess(`Registered '${data.name}' (face confidence: ${data.det_score.toFixed(3)})`)
@@ -82,9 +87,9 @@ function PeoplePage() {
 
     return (
         <div>
-            <form className="card upload-form" onSubmit={handleUpload}>
-                <h3>Register a new reference person</h3>
-                <div className="upload-fields">
+            <form className="panel upload-panel" onSubmit={handleUpload}>
+                <h2>Register a reference person</h2>
+                <div className="upload-row">
                     <input
                         type="text"
                         placeholder="Person's name"
@@ -92,14 +97,18 @@ function PeoplePage() {
                         value={name}
                         onChange={(e) => setName(e.target.value)}
                     />
-                    <input
-                        type="file"
-                        aria-label="Reference photo"
-                        accept="image/jpeg,image/png"
-                        onChange={(e) => setFile(e.target.files[0] ?? null)}
-                    />
+                    <label className={file ? 'dropzone has-file' : 'dropzone'}>
+                        <Icon name="upload" size={16} />
+                        <span className="file-name">{file ? file.name : 'Choose a JPG or PNG photo…'}</span>
+                        <input
+                            type="file"
+                            aria-label="Reference photo"
+                            accept="image/jpeg,image/png"
+                            onChange={(e) => setFile(e.target.files[0] ?? null)}
+                        />
+                    </label>
                     <button className="btn" type="submit" disabled={uploading}>
-                        {uploading ? 'Uploading...' : 'Register'}
+                        {uploading ? 'Uploading…' : 'Register'}
                     </button>
                 </div>
                 {uploadError && <p className="upload-message error">{uploadError}</p>}
@@ -110,17 +119,14 @@ function PeoplePage() {
                 </p>
             </form>
 
-            <h3 className="section-title">Registered people ({people.length})</h3>
-            {loading && <div className="status">Loading...</div>}
-            {error && (
-                <div className="status error">
-                    <p>Failed to load people: {error}</p>
-                    <p>{API_HINT}</p>
-                </div>
-            )}
+            <h2 className="section-title">
+                Registered <span className="mono">({people.length})</span>
+            </h2>
+            {loading && <Status title="Loading…" />}
+            {error && <Status kind="error" title={`Failed to load people: ${error}`}>{API_HINT}</Status>}
 
             {!loading && !error && people.length === 0 && (
-                <p className="status">No people registered yet — use the form above.</p>
+                <Status title="No people registered yet">Use the form above to add one.</Status>
             )}
 
             {!loading && !error && people.length > 0 && (

@@ -56,3 +56,5 @@ test_insightface.py
 test_reference_photo.py
 phase5_log.txt
 *.log
+# Local Claude Code launch settings
+.claude/
