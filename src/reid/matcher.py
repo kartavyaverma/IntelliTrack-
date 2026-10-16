@@ -32,14 +32,21 @@ class CrossCameraMatcher:
         if self.index.ntotal == 0:
             return []
 
-        scores, indices = self.index.search(embedding.reshape(1, -1), min(k, self.index.ntotal))
+        # Search the whole index, THEN drop same-camera hits. Searching only
+        # the top-k first would silently miss a valid cross-camera match
+        # whenever the k nearest neighbours all came from the query's own
+        # camera. The index holds one vector per track, so this stays small.
+        scores, indices = self.index.search(embedding.reshape(1, -1), self.index.ntotal)
         results = []
         for score, idx in zip(scores[0], indices[0]):
             if idx == -1:
                 continue
+            if score < self.match_threshold:
+                break  # results are sorted best-first
             meta = self.metadata[idx]
             if meta["camera_id"] == camera_id:
                 continue
-            if score >= self.match_threshold:
-                results.append((float(score), meta))
+            results.append((float(score), meta))
+            if len(results) >= k:
+                break
         return results

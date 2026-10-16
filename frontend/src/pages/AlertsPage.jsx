@@ -1,68 +1,81 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
+import { getJSON, API_HINT } from '../api'
 
-const API_BASE = 'http://127.0.0.1:8000'
+const POLL_INTERVAL_MS = 5000 // check for new alerts every 5 seconds
 
 function AlertsPage() {
     const [alerts, setAlerts] = useState([])
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState(null)
+    const [lastUpdated, setLastUpdated] = useState(null)
 
-    useEffect(() => {
-        fetch(`${API_BASE}/alerts?limit=100`)
-            .then((res) => {
-                if (!res.ok) throw new Error(`API returned ${res.status}`)
-                return res.json()
-            })
+    const fetchAlerts = useCallback(() => {
+        getJSON('/alerts?limit=100')
             .then((data) => {
                 setAlerts(data)
-                setLoading(false)
+                setError(null)
+                setLastUpdated(new Date())
             })
-            .catch((err) => {
-                setError(err.message)
-                setLoading(false)
-            })
+            .catch((err) => setError(err.message))
+            .finally(() => setLoading(false))
     }, [])
 
-    if (loading) return <div className="status">Loading alerts...</div>
-    if (error) {
-        return (
-            <div className="status error">
-                <p>Failed to load alerts: {error}</p>
-                <p>
-                    Check that the API is running (<code>uvicorn src.api.main:app --reload</code>)
-                    and that CORS is configured to allow <code>http://localhost:5173</code>.
-                </p>
-            </div>
-        )
-    }
+    useEffect(() => {
+        fetchAlerts() // initial load
+        const interval = setInterval(fetchAlerts, POLL_INTERVAL_MS)
+        return () => clearInterval(interval) // stop polling when leaving this tab
+    }, [fetchAlerts])
 
     return (
         <div>
-            <p className="subtitle">{alerts.length} alert(s)</p>
-            <table className="data-table">
-                <thead>
-                    <tr>
-                        <th>ID</th>
-                        <th>Type</th>
-                        <th>Message</th>
-                        <th>Similarity</th>
-                        <th>Created At</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {alerts.map((alert) => (
-                        <tr key={alert.id}>
-                            <td>{alert.id}</td>
-                            <td><span className={`badge badge-${alert.type}`}>{alert.type}</span></td>
-                            <td>{alert.message}</td>
-                            <td>{alert.similarity != null ? alert.similarity.toFixed(3) : '—'}</td>
-                            <td>{new Date(alert.created_at).toLocaleString()}</td>
-                        </tr>
-                    ))}
-                </tbody>
-            </table>
-            {alerts.length === 0 && (
+            <div className="toolbar">
+                <span className="count">{alerts.length} alert(s)</span>
+                <span className="spacer" />
+                {lastUpdated && (
+                    <span className="last-updated">Updated {lastUpdated.toLocaleTimeString()}</span>
+                )}
+                <button className="btn" onClick={fetchAlerts}>Refresh</button>
+            </div>
+
+            {loading && <div className="status">Loading alerts...</div>}
+            {error && (
+                <div className="status error">
+                    <p>Failed to load alerts: {error}</p>
+                    <p>{API_HINT}</p>
+                </div>
+            )}
+
+            {!loading && !error && alerts.length === 0 && (
                 <p className="status">No alerts yet — run a pipeline script to generate some.</p>
+            )}
+
+            {!loading && !error && alerts.length > 0 && (
+                <div className="table-wrap">
+                    <table className="data-table">
+                        <thead>
+                            <tr>
+                                <th className="num">ID</th>
+                                <th>Type</th>
+                                <th>Message</th>
+                                <th className="num">Similarity</th>
+                                <th>Created at</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {alerts.map((alert) => (
+                                <tr key={alert.id}>
+                                    <td className="num">{alert.id}</td>
+                                    <td><span className={`badge badge-${alert.type}`}>{alert.type}</span></td>
+                                    <td>{alert.message}</td>
+                                    <td className="num">
+                                        {alert.similarity != null ? alert.similarity.toFixed(3) : '—'}
+                                    </td>
+                                    <td className="nowrap">{new Date(alert.created_at).toLocaleString()}</td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
             )}
         </div>
     )

@@ -12,7 +12,10 @@ MIN_FACE_SIZE_PX = 40
 
 
 class FaceEmbedder:
-    def __init__(self, device: str = "cpu", det_size=(640, 640)):
+    def __init__(self, device: str = "cpu", det_size=(640, 640),
+                 min_det_score: float = MIN_DET_SCORE, min_face_size_px: int = MIN_FACE_SIZE_PX):
+        self.min_det_score = min_det_score
+        self.min_face_size_px = min_face_size_px
         providers = ["CUDAExecutionProvider", "CPUExecutionProvider"] if "cuda" in str(device) else ["CPUExecutionProvider"]
         self.app = FaceAnalysis(name="buffalo_l", providers=providers)
         ctx_id = 0 if "cuda" in str(device) else -1
@@ -23,18 +26,18 @@ class FaceEmbedder:
         Runs face detection + embedding on a full frame (not a pre-cropped
         person box — InsightFace does its own face localization).
         Returns a list of dicts: {bbox, embedding, det_score}, filtered to
-        only faces meeting MIN_DET_SCORE and MIN_FACE_SIZE_PX.
+        only faces meeting min_det_score and min_face_size_px.
         """
         faces = self.app.get(frame_image)
         results = []
 
         for face in faces:
-            if face.det_score < MIN_DET_SCORE:
+            if face.det_score < self.min_det_score:
                 continue
 
             x1, y1, x2, y2 = face.bbox
             width, height = x2 - x1, y2 - y1
-            if width < MIN_FACE_SIZE_PX or height < MIN_FACE_SIZE_PX:
+            if width < self.min_face_size_px or height < self.min_face_size_px:
                 continue
 
             results.append({

@@ -1,12 +1,12 @@
 """
-Minimal FastAPI layer to query stored sightings/alerts. This is what Phase 7's
-dashboard will eventually call — built now since the DB exists now, per your
-scope decision. Run with:
+FastAPI layer over the IntelliTrack database: read access to sightings,
+alerts, cameras, people and heatmap snapshots, plus photo upload to register
+a missing person. This is what the React dashboard (frontend/) calls. Run with:
     uvicorn src.api.main:app --reload
 """
 import os
 import re
-from datetime import datetime
+from datetime import datetime, timezone
 
 from fastapi import FastAPI, HTTPException, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
@@ -19,10 +19,6 @@ from src.common.device import get_device
 from src.face_match.embedder import FaceEmbedder
 
 app = FastAPI(title="IntelliTrack API")
-
-
-
-
 
 app.add_middleware(
     CORSMiddleware,
@@ -39,12 +35,22 @@ MISSING_PERSONS_DIR = "data/missing_persons"
 os.makedirs(MISSING_PERSONS_DIR, exist_ok=True)
 app.mount("/static/missing_persons", StaticFiles(directory=MISSING_PERSONS_DIR), name="missing_persons")
 
-
-
-
 _face_embedder = FaceEmbedder(device=str(get_device()))
 
 init_db()
+
+
+def _iso_utc(dt) -> str:
+    # created_at is stored as UTC, but SQLite drops the tzinfo on read; mark
+    # it explicitly so the browser doesn't treat it as local time.
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt.isoformat()
+
+
+def _photo_url(reference_photo_path: str) -> str:
+    # Paths saved on Windows may use backslashes; normalize before basename.
+    return f"/static/missing_persons/{os.path.basename(reference_photo_path.replace(chr(92), '/'))}"
 
 
 @app.get("/people")
@@ -55,7 +61,7 @@ def list_people():
         return [{
             "id": p.id, "name": p.name,
             "reference_photo_path": p.reference_photo_path,
-            "photo_url": f"/static/missing_persons/{os.path.basename(p.reference_photo_path)}",
+            "photo_url": _photo_url(p.reference_photo_path),
         } for p in people]
     finally:
         session.close()
@@ -86,6 +92,7 @@ def list_sightings(sighting_type: str = None, camera_id: str = None, limit: int 
             "id": s.id, "type": s.sighting_type, "camera_id": s.camera_id,
             "track_id": s.track_id, "timestamp_sec": s.timestamp_sec,
             "similarity": s.similarity, "person_id": s.person_id,
+            "person_name": s.person.name if s.person else None,
             "matched_camera_id": s.matched_camera_id, "matched_track_id": s.matched_track_id,
         } for s in rows]
     finally:
@@ -99,7 +106,7 @@ def list_alerts(limit: int = 100):
         rows = session.query(Alert).order_by(Alert.id.desc()).limit(limit).all()
         return [{
             "id": a.id, "type": a.alert_type, "message": a.message,
-            "similarity": a.similarity, "created_at": a.created_at.isoformat(),
+            "similarity": a.similarity, "created_at": _iso_utc(a.created_at),
             "sighting_id": a.sighting_id,
         } for a in rows]
     finally:
@@ -116,7 +123,7 @@ def get_alert(alert_id: int):
         s = alert.sighting
         return {
             "id": alert.id, "type": alert.alert_type, "message": alert.message,
-            "similarity": alert.similarity, "created_at": alert.created_at.isoformat(),
+            "similarity": alert.similarity, "created_at": _iso_utc(alert.created_at),
             "sighting": {
                 "camera_id": s.camera_id, "track_id": s.track_id,
                 "timestamp_sec": s.timestamp_sec, "bbox": s.bbox,
@@ -129,10 +136,17 @@ def get_alert(alert_id: int):
 @app.get("/heatmaps")
 def list_heatmaps():
     files = [f for f in os.listdir(OUTPUTS_DIR) if f.endswith("_heatmap.jpg")]
-    return [
-        {"filename": f, "url": f"/static/outputs/{f}"}
-        for f in sorted(files)
-    ]
+    result = []
+    for f in sorted(files):
+        mtime = os.path.getmtime(os.path.join(OUTPUTS_DIR, f))
+        result.append({
+            "filename": f,
+            # ?v=<mtime> so the browser doesn't show a cached snapshot from
+            # an earlier pipeline run under the same filename.
+            "url": f"/static/outputs/{f}?v={int(mtime)}",
+            "updated_at": datetime.fromtimestamp(mtime).isoformat(),
+        })
+    return result
 
 
 def _safe_filename(name: str, original_filename: str) -> str:
@@ -160,11 +174,9 @@ async def register_person(name: str = Form(...), file: UploadFile = File(...)):
     here at upload time instead of at script-startup time.
 
     NOTE: this registers the person in the database, viewable via GET
-    /people and the dashboard. It does NOT make an already-running pipeline
-    pick up this reference live — pipeline scripts still load one
-    hardcoded REFERENCE_PHOTO constant at their own startup. Making a
-    running pipeline poll the DB for active people would be a further
-    change, not implemented here.
+    /people and the dashboard. The Phase 6 pipeline loads every registered
+    person at startup, so a person added here is matched on the NEXT run —
+    an already-running pipeline does not pick them up live.
     """
     session = SessionLocal()
     try:
@@ -184,9 +196,6 @@ async def register_person(name: str = Form(...), file: UploadFile = File(...)):
 
         with open(save_path, "wb") as f:
             f.write(contents)
-
-
-
 
         import cv2
         img = cv2.imread(save_path)

@@ -41,7 +41,7 @@ def log_face_sighting(session, camera_id, track_id, frame_id, timestamp_sec,
     session.add(sighting)
     session.commit()
 
-    if should_alert("face", camera_id, person.name, similarity):
+    if should_alert("face", camera_id, person.name, similarity, timestamp_sec):
         alert = Alert(
             sighting_id=sighting.id,
             alert_type="face",
@@ -73,7 +73,7 @@ def log_reid_sighting(session, camera_id, track_id, frame_id, timestamp_sec,
     session.commit()
 
     identity_key = f"{matched_camera_id}:{matched_track_id}"
-    if should_alert("reid", camera_id, identity_key, similarity):
+    if should_alert("reid", camera_id, identity_key, similarity, timestamp_sec):
         alert = Alert(
             sighting_id=sighting.id,
             alert_type="reid",

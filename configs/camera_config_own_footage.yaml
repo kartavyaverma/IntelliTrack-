@@ -1,0 +1,3 @@
+cameras:
+  - camera_id: cam_own
+    source: data/videos/my_real_footage.mp4

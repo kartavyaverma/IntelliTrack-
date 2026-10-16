@@ -1,22 +1,35 @@
+# Model + threshold configuration read by scripts/run_phase6_pipeline.py.
+# Values here are the ones validated during development (see README,
+# "Validation Methodology") — change them here, not in code.
 device: auto
 
 detection:
   model_name: yolov8n.pt
   confidence_threshold: 0.4
-  target_class: person
 
 tracking:
   max_age: 30
   n_init: 3
 
 reid:
-  model_name: osnet_x0_25
-  match_distance_threshold: 0.35
+  model_name: osnet_x1_0
+  model_path: models/osnet_x1_0_market1501.pth
+  # Cosine similarity (inner product on L2-normalized embeddings).
+  # 0.70 produced false positives; 0.85 validated on the split-video test.
+  match_similarity_threshold: 0.85
 
 face_match:
+  min_det_score: 0.6
   min_face_size_px: 40
-  match_distance_threshold: 0.5
-  consecutive_matches_required: 3
+  # Cosine similarity against a registered reference face.
+  match_similarity_threshold: 0.5
 
 alerts:
+  face_confidence_floor: 0.65
+  reid_confidence_floor: 0.85
+  # Measured in video time (seconds of footage), per camera + identity.
   cooldown_seconds: 15
+
+crowd:
+  overcrowd_threshold: 8
+  heatmap_decay: 0.98

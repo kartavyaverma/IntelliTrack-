@@ -89,8 +89,9 @@ detector or tracker to be swapped later without touching any other stage.
 ```
 intellitrack/
 ├── configs/
-│   ├── camera_config.yaml      Camera source definitions
-│   └── model_config.yaml       Model/threshold configuration
+│   ├── camera_config.yaml      Default cameras (MOT17-04 + MOT17-09)
+│   ├── camera_config_*.yaml    Alternate camera sets (own footage, Re-ID test, empty video)
+│   └── model_config.yaml       Model/threshold configuration (read by Phase 6)
 ├── data/
 │   ├── videos/                 Source video files
 │   ├── missing_persons/        Registered reference photos
@@ -130,10 +131,7 @@ python -m venv .venv
 .venv\Scripts\activate        # Windows
 # source .venv/bin/activate   # Linux/Mac
 
-pip install ultralytics deep-sort-realtime opencv-python pyyaml
-pip install torchreid faiss-cpu gdown tensorboard
-pip install insightface onnxruntime
-pip install fastapi uvicorn sqlalchemy python-multipart
+pip install -r requirements.txt
 ```
 
 Download the Re-ID checkpoint (Market1501-pretrained OSNet, required —
@@ -167,7 +165,8 @@ ffmpeg -framerate 30 -i path/to/MOT17-XX-FRCNN/img1/%06d.jpg \
   -c:v libx264 -pix_fmt yuv420p data/videos/mot17_XX.mp4
 ```
 
-Configure sources in `configs/camera_config.yaml`:
+Configure sources in `configs/camera_config.yaml` (the default, two MOT17
+cameras — at least two cameras are needed for cross-camera Re-ID):
 
 ```yaml
 cameras:
@@ -176,6 +175,19 @@ cameras:
   - camera_id: cam_2
     source: data/videos/mot17_09.mp4
 ```
+
+Alternate camera sets live next to it and are selected with `--config`:
+
+| File | Purpose |
+|---|---|
+| `camera_config_own_footage.yaml` | Your own recording (`my_real_footage.mp4`) as a single camera |
+| `camera_config_reid_test.yaml` | MOT17-04 split into two overlapping halves — Re-ID true-positive test |
+| `camera_config_empty_test.yaml` | A video with no people — negative test |
+
+Thresholds and model settings (detection confidence, tracker `max_age` /
+`n_init`, Re-ID and face similarity thresholds, alert floors and cooldown,
+overcrowding threshold, heatmap decay) are read from
+`configs/model_config.yaml` by the Phase 6 pipeline.
 
 ---
 
@@ -199,7 +211,19 @@ python -m scripts.run_phase5_pipeline --display
 
 # Full pipeline plus crowd density and heatmaps
 python -m scripts.run_phase6_pipeline --display --heatmap
+
+# Same pipeline on your own footage
+python -m scripts.run_phase6_pipeline --heatmap --config configs/camera_config_own_footage.yaml
 ```
+
+Phase 6 matches faces against **every person registered in the database**
+(register at least one through the dashboard first). Phases 4 and 5 still
+use the single hardcoded `cropped_reference.jpg` they were built with.
+
+Output: `data/outputs/phase6_<camera>_tracked.mp4` (annotated video) and
+`data/outputs/phase6_<camera>_heatmap.jpg` (heatmap snapshot at the end of
+the run). The video writers are released in a `finally` block, so stopping
+with Ctrl+C still leaves a playable file.
 
 All scripts accept `--config <path>` to point at an alternate camera
 configuration without editing code.
@@ -228,14 +252,14 @@ Open `http://localhost:5173`. Four tabs are available:
   usable face is detectable before saving), browse registered people
 
 Registering a person through the dashboard does not update an already
-running pipeline process — pipeline scripts load their reference photo
-once at startup. Restart the pipeline to pick up a newly registered photo.
+running pipeline process — Phase 6 loads all registered people once at
+startup. Run the pipeline again to pick up a newly registered photo.
 
 ### API Endpoints
 
 | Endpoint | Description |
 |---|---|
-| `GET /sightings` | All match events, filterable by `sighting_type` and `camera_id` |
+| `GET /sightings` | All match events (with matched person name for face sightings), filterable by `sighting_type` and `camera_id` |
 | `GET /alerts` | Sightings that cleared the confidence floor + cooldown |
 | `GET /alerts/{alert_id}` | Single alert with its originating sighting |
 | `GET /people` | Registered missing-person references |
@@ -273,6 +297,18 @@ stream of false matches on footage already proven to have none. Fixed by
 limiting embedding to once per track lifetime, restoring the original
 validated zero-false-positive result.
 
+**Wall-clock alert cooldown (post-Phase 7 review).** The 15-second cooldown
+was measured with `time.time()`. On CPU the pipeline processes footage much
+slower than real time, so one person on screen produced 5 alerts within
+0.9 seconds of video. The cooldown now uses each frame's video timestamp;
+the same footage produces a single alert.
+
+**Re-ID top-k filtering (post-Phase 7 review).** The matcher fetched the 5
+nearest neighbours and only then discarded same-camera results, so a valid
+cross-camera match was silently missed whenever the 5 nearest vectors all
+came from the query's own camera. It now filters same-camera vectors before
+picking the top matches.
+
 ---
 
 ## Known Limitations
@@ -284,6 +320,10 @@ validated zero-false-positive result.
   clock.
 - Video ingestion processes a finite file once; a continuous live camera
   feed would require a looping or streaming ingestion mode.
+- Face detection runs on every full frame, which is slow on CPU (several
+  seconds per frame pair at 1080p). Every matching frame is logged as a
+  Sighting by design; only Alerts are rate-limited.
+- Overcrowding events are printed to the console, not stored in the database.
 - SQLite is sufficient for single-machine use but would need to be
   replaced for concurrent multi-camera writers at production scale.
 - A long-lived development database can misrepresent current system
