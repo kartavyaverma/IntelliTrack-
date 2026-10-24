@@ -1,6 +1,6 @@
 """
 Small helper functions so pipeline scripts don't write raw SQLAlchemy queries
-inline — keeps run_phase5_pipeline.py readable and keeps DB access patterns
+inline — keeps run_phase6_pipeline.py readable and keeps DB access patterns
 in one place (easy to point at in a viva: "here's the one place that writes
 to the database").
 """

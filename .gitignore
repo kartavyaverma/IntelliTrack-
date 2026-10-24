@@ -16,8 +16,6 @@ data/videos/*
 !data/videos/.gitkeep
 data/missing_persons/*
 !data/missing_persons/.gitkeep
-data/embeddings_index/*
-!data/embeddings_index/.gitkeep
 data/outputs/*
 !data/outputs/.gitkeep
 data/raw_mot17/
@@ -58,3 +56,8 @@ phase5_log.txt
 *.log
 # Local Claude Code launch settings
 .claude/
+
+# Project documents kept out of the repository
+docs/
+paper/
+report/

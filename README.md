@@ -97,7 +97,7 @@ intellitrack/
 │   ├── missing_persons/        Registered reference photos
 │   ├── outputs/                Annotated videos, heatmap snapshots
 │   └── intellitrack.db         SQLite database
-├── models/                     Downloaded pretrained checkpoints
+├── models/                     yolov8n.pt + OSNet re-ID checkpoint
 ├── src/
 │   ├── common/                 Device detection, config loading
 │   ├── ingestion/               VideoReader, MultiSourceManager
@@ -110,8 +110,9 @@ intellitrack/
 │   ├── db/                      SQLAlchemy models, session, CRUD helpers
 │   └── api/                     FastAPI app
 ├── frontend/                   React dashboard (Vite)
-├── scripts/                    Pipeline entrypoints, one per phase
-└── tests/
+├── scripts/
+│   └── run_phase6_pipeline.py  The pipeline entrypoint (all stages)
+└── docs/                       Development notes, viva prep, demo script
 ```
 
 ---
@@ -191,25 +192,15 @@ overcrowding threshold, heatmap decay) are read from
 
 ---
 
-## Running the Pipelines
+## Running the Pipeline
 
-Each phase has its own entrypoint, retained for reference; the most
-complete pipeline is Phase 6, which includes every stage.
+The project was built in phases (1: detection + tracking, 2: multiple
+cameras, 3: Re-ID, 4: face matching, 5: alerts + database, 6: crowd
+analytics). Phase 6 contains every stage and is the only entrypoint kept;
+the earlier phase scripts remain in the git history.
 
 ```bash
-# Single camera, detection + tracking only
-python -m scripts.run_phase1_pipeline --display
-
-# Multi-camera ingestion + detection + tracking
-python -m scripts.run_phase2_pipeline --display
-
-# Adds cross-camera Re-ID
-python -m scripts.run_phase3_pipeline --display --config configs/camera_config.yaml
-
-# Full pipeline: Re-ID + face matching + persistence + alerting
-python -m scripts.run_phase5_pipeline --display
-
-# Full pipeline plus crowd density and heatmaps
+# Full pipeline on the default two cameras, with live windows and heatmap overlay
 python -m scripts.run_phase6_pipeline --display --heatmap
 
 # Same pipeline on your own footage
@@ -217,16 +208,15 @@ python -m scripts.run_phase6_pipeline --heatmap --config configs/camera_config_o
 ```
 
 Phase 6 matches faces against **every person registered in the database**
-(register at least one through the dashboard first). Phases 4 and 5 still
-use the single hardcoded `cropped_reference.jpg` they were built with.
+(register at least one through the dashboard first).
 
 Output: `data/outputs/phase6_<camera>_tracked.mp4` (annotated video) and
 `data/outputs/phase6_<camera>_heatmap.jpg` (heatmap snapshot at the end of
 the run). The video writers are released in a `finally` block, so stopping
 with Ctrl+C still leaves a playable file.
 
-All scripts accept `--config <path>` to point at an alternate camera
-configuration without editing code.
+`--config <path>` points the pipeline at an alternate camera configuration
+without editing code; `--display` opens live windows (press `q` to stop).
 
 ---
 

@@ -11,7 +11,7 @@ class Detection:
 class PersonDetector:
     PERSON_CLASS_ID = 0
 
-    def __init__(self, model_name: str = "yolov8n.pt", confidence: float = 0.4, device: str = "cpu"):
+    def __init__(self, model_name: str = "models/yolov8n.pt", confidence: float = 0.4, device: str = "cpu"):
         self.model = YOLO(model_name)
         self.confidence = confidence
         self.device = device
