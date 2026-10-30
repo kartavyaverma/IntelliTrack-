@@ -204,7 +204,7 @@ the earlier phase scripts remain in the git history.
 python -m scripts.run_phase6_pipeline --display --heatmap
 
 # Same pipeline on your own footage
-python -m scripts.run_phase6_pipeline --heatmap --config configs/camera_config_own_footage.yaml
+python -m scripts.run_phase6_pipeline --heatmap --config own_footage
 ```
 
 Phase 6 matches faces against **every person registered in the database**
@@ -215,8 +215,14 @@ Output: `data/outputs/phase6_<camera>_tracked.mp4` (annotated video) and
 the run). The video writers are released in a `finally` block, so stopping
 with Ctrl+C still leaves a playable file.
 
-`--config <path>` points the pipeline at an alternate camera configuration
-without editing code; `--display` opens live windows (press `q` to stop).
+`--config` takes a camera configuration file, or a short name: `own_footage`,
+`reid_test` or `empty_test` mean `configs/camera_config_<name>.yaml`.
+`--display` opens live windows (press `q` to stop). To clear alerts and
+sightings before a demo (registered people are kept):
+
+```bash
+python scripts/reset_demo.py
+```
 
 ---
 

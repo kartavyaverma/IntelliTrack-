@@ -295,11 +295,28 @@ def main(display: bool, config_path: str, show_heatmap: bool):
     print("[Phase6] Done.")
 
 
+def resolve_config(value: str) -> str:
+    """Accept a full path, or a short name such as `own_footage`, which means
+    configs/camera_config_own_footage.yaml (keeps commands short enough to
+    paste on one line)."""
+    if os.path.exists(value):
+        return value
+    short = os.path.join("configs", f"camera_config_{value}.yaml")
+    if os.path.exists(short):
+        return short
+    raise SystemExit(
+        f"Camera config not found: '{value}'. Pass a file path, or one of: "
+        + ", ".join(sorted(f[len('camera_config_'):-len('.yaml')]
+                           for f in os.listdir("configs")
+                           if f.startswith("camera_config_") and f.endswith(".yaml"))))
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--display", action="store_true")
-    parser.add_argument("--config", default="configs/camera_config.yaml")
+    parser.add_argument("--config", default="configs/camera_config.yaml",
+                        help="camera config file, or a short name like own_footage / reid_test")
     parser.add_argument("--heatmap", action="store_true",
                         help="Overlay live heatmap on the displayed/written video")
     args = parser.parse_args()
-    main(display=args.display, config_path=args.config, show_heatmap=args.heatmap)
+    main(display=args.display, config_path=resolve_config(args.config), show_heatmap=args.heatmap)
